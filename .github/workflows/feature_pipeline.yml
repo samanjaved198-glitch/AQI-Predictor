@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests python-dotenv pandas hopsworks
+          pip install requests python-dotenv pandas "hopsworks[python]"
 
       - name: Run feature pipeline
         env:
