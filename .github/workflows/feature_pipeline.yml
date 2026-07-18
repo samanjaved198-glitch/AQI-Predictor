@@ -22,12 +22,8 @@ jobs:
         run: |
           pip install requests python-dotenv pandas "hopsworks[python]"
 
-      - name: Run feature pipeline
+      - name: Check secret length
         env:
-          AQICN_API_KEY: ${{ secrets.AQICN_API_KEY }}
-          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
-          HOPSWORKS_PROJECT_NAME: ${{ secrets.HOPSWORKS_PROJECT_NAME }}
-          CITY_NAME: ${{ secrets.CITY_NAME }}
-        run: |
-          python featurepipeline/push_to_store.py
+        run: echo "Key length is ${#HOPSWORKS_API_KEY}"
+        
