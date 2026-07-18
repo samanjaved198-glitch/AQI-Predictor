@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Pearls AQI Predictor
 
 End-to-end serverless system to predict Air Quality Index (AQI) for the next 3 days.
@@ -16,3 +17,6 @@ Python, Scikit-learn, TensorFlow, Hopsworks, GitHub Actions, Streamlit, AQICN/Op
 2. Add API keys to `.env`
 3. Run feature pipeline, then training pipeline
 4. Launch dashboard: `streamlit run app/dashboard.py`
+=======
+# AQI-Predictor
+>>>>>>> 151bbd193bd6d9ad051acc1ef4770073b3b6f76d
