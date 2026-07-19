@@ -23,10 +23,8 @@ def get_last_aqi(fs):
 
 def push_features():
     project = hopsworks.login(
+        api_key_value=os.getenv("HOPSWORKS_API_KEY"),
         project=os.getenv("HOPSWORKS_PROJECT_NAME"),
-        host="eu-west.cloud.hopsworks.ai",
-        port=443,
-        api_key_value=os.getenv("HOPSWORKS_API_KEY")
     )
     fs = project.get_feature_store()
 
@@ -40,7 +38,12 @@ def push_features():
                      "temperature", "humidity", "pressure", "wind_speed",
                      "aqi_change_rate", "target_aqi"]
     for col in numeric_cols:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+
+    df["hour"] = df["hour"].astype("float64")
+    df["day"] = df["day"].astype("float64")
+    df["month"] = df["month"].astype("float64")
+    df["day_of_week"] = df["day_of_week"].astype("float64")
 
     fg = fs.get_or_create_feature_group(
         name="aqi_features",

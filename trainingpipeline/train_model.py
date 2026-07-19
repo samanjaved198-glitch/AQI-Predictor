@@ -6,6 +6,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from hsml.schema import Schema
+from hsml.model_schema import ModelSchema
 import joblib
 
 load_dotenv()
@@ -21,10 +23,8 @@ TARGET_COLUMN = "target_aqi"
 
 def load_data():
     project = hopsworks.login(
+        api_key_value=os.getenv("HOPSWORKS_API_KEY"),
         project=os.getenv("HOPSWORKS_PROJECT_NAME"),
-        host="eu-west.cloud.hopsworks.ai",
-        port=443,
-        api_key_value=os.getenv("HOPSWORKS_API_KEY")
     )
     fs = project.get_feature_store()
     fg = fs.get_feature_group(name="aqi_features", version=1)
@@ -33,13 +33,15 @@ def load_data():
 
 
 def preprocess(df):
-    # Drop rows with missing target
     df = df.dropna(subset=[TARGET_COLUMN])
 
-    # Fill missing pollutant/weather values with column median (safe default)
     for col in FEATURE_COLUMNS:
         if col in df.columns:
-            df[col] = df[col].fillna(df[col].median())
+            median_val = df[col].median()
+            if pd.isna(median_val):
+                df[col] = df[col].fillna(0)
+            else:
+                df[col] = df[col].fillna(median_val)
 
     X = df[FEATURE_COLUMNS]
     y = df[TARGET_COLUMN]
@@ -95,10 +97,14 @@ def train():
 
     # Push to Hopsworks Model Registry
     mr = project.get_model_registry()
+    input_schema = Schema(X_train)
+    output_schema = Schema(y_train)
+    model_schema = ModelSchema(input_schema=input_schema, output_schema=output_schema)
     model = mr.python.create_model(
-        name="aqi_predictor",
+        name="aqi_predictor_v2",
         metrics={"rmse": best_rmse, "mae": best_mae, "r2": best_r2},
         description=f"AQI predictor using {best_name}",
+        model_schema=model_schema,
     )
     model.save(model_path)
 
