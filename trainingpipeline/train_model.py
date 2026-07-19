@@ -104,20 +104,23 @@ def train():
     model_path = f"trainingpipeline/saved_model/{best_name}_model.pkl"
     joblib.dump(best_model, model_path)
 
-    # Push to Hopsworks Model Registry
-    mr = project.get_model_registry()
-    input_schema = Schema(X_train)
-    output_schema = Schema(y_train)
-    model_schema = ModelSchema(input_schema=input_schema, output_schema=output_schema)
-    model = mr.python.create_model(
-        name="aqi_predictor_v2",
-        metrics={"rmse": best_rmse, "mae": best_mae, "r2": best_r2},
-        description=f"AQI predictor using {best_name}",
-        model_schema=model_schema,
-    )
-    model.save(model_path)
-
-    print("✅ Model saved to Hopsworks Model Registry.")
+    # Push to Hopsworks Model Registry (best-effort — don't fail the pipeline if this errors)
+    try:
+        mr = project.get_model_registry()
+        input_schema = Schema(X_train)
+        output_schema = Schema(y_train)
+        model_schema = ModelSchema(input_schema=input_schema, output_schema=output_schema)
+        model = mr.python.create_model(
+            name="aqi_predictor_v2",
+            metrics={"rmse": best_rmse, "mae": best_mae, "r2": best_r2},
+            description=f"AQI predictor using {best_name}",
+            model_schema=model_schema,
+        )
+        model.save(model_path)
+        print("✅ Model saved to Hopsworks Model Registry.")
+    except Exception as e:
+        print(f"⚠️ Model Registry upload skipped (already registered or server issue): {e}")
+        print(f"✅ Model trained successfully and saved locally at: {model_path}")
 
 
 if __name__ == "__main__":
