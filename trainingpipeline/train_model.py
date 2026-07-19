@@ -25,6 +25,7 @@ def load_data():
     api_key = os.getenv("HOPSWORKS_API_KEY")
     if api_key:
         api_key = api_key.strip()
+        api_key = "".join(c for c in api_key if c.isprintable() and not c.isspace())
 
     project_name = os.getenv("HOPSWORKS_PROJECT_NAME")
     if project_name:
