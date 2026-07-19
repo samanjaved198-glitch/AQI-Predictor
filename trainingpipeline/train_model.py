@@ -22,9 +22,17 @@ TARGET_COLUMN = "target_aqi"
 
 
 def load_data():
+    api_key = os.getenv("HOPSWORKS_API_KEY")
+    if api_key:
+        api_key = api_key.strip()
+
+    project_name = os.getenv("HOPSWORKS_PROJECT_NAME")
+    if project_name:
+        project_name = project_name.strip()
+
     project = hopsworks.login(
-        api_key_value=os.getenv("HOPSWORKS_API_KEY"),
-        project=os.getenv("HOPSWORKS_PROJECT_NAME"),
+        api_key_value=api_key,
+        project=project_name,
     )
     fs = project.get_feature_store()
     fg = fs.get_feature_group(name="aqi_features", version=1)
@@ -90,31 +98,25 @@ def train():
 
     print(f"\n🏆 Best model: {best_name} (RMSE: {best_rmse:.2f})")
 
-    # Save locally first — this is what the dashboard actually reads,
-    # so it must succeed regardless of what happens with the registry below.
+    # Save locally first
     os.makedirs("trainingpipeline/saved_model", exist_ok=True)
     model_path = f"trainingpipeline/saved_model/{best_name}_model.pkl"
     joblib.dump(best_model, model_path)
-    print(f"✅ Model saved locally to {model_path}")
 
-    # Push to Hopsworks Model Registry — wrapped so a registry-side failure
-    # (e.g. the recurring HTTP 500 on repeated version creation) doesn't
-    # fail the whole pipeline. The model is already safely saved locally above.
-    try:
-        mr = project.get_model_registry()
-        input_schema = Schema(X_train)
-        output_schema = Schema(y_train)
-        model_schema = ModelSchema(input_schema=input_schema, output_schema=output_schema)
-        model = mr.python.create_model(
-            name="aqi_predictor_v2",
-            metrics={"rmse": best_rmse, "mae": best_mae, "r2": best_r2},
-            description=f"AQI predictor using {best_name}",
-            model_schema=model_schema,
-        )
-        model.save(model_path)
-        print("✅ Model registered to Hopsworks Model Registry.")
-    except Exception as e:
-        print(f"⚠️ Model registry upload failed (continuing anyway — local model is saved): {e}")
+    # Push to Hopsworks Model Registry
+    mr = project.get_model_registry()
+    input_schema = Schema(X_train)
+    output_schema = Schema(y_train)
+    model_schema = ModelSchema(input_schema=input_schema, output_schema=output_schema)
+    model = mr.python.create_model(
+        name="aqi_predictor_v2",
+        metrics={"rmse": best_rmse, "mae": best_mae, "r2": best_r2},
+        description=f"AQI predictor using {best_name}",
+        model_schema=model_schema,
+    )
+    model.save(model_path)
+
+    print("✅ Model saved to Hopsworks Model Registry.")
 
 
 if __name__ == "__main__":
