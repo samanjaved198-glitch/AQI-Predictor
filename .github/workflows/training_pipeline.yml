@@ -2,8 +2,8 @@ name: AQI Training Pipeline
 
 on:
   schedule:
-    - cron: '0 0 * * *'   # roz raat 12 baje (UTC) chalega
-  workflow_dispatch:        # manual trigger bhi allow karta hai
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   run-training-pipeline:
@@ -21,6 +21,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install requests python-dotenv pandas "hopsworks[python]" scikit-learn joblib
+
+      - name: Check secret length
+        env:
+          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+        run: echo "Key length is ${#HOPSWORKS_API_KEY}"
 
       - name: Run training pipeline
         env:
