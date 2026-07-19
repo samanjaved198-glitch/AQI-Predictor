@@ -90,25 +90,31 @@ def train():
 
     print(f"\n🏆 Best model: {best_name} (RMSE: {best_rmse:.2f})")
 
-    # Save locally first
+    # Save locally first — this is what the dashboard actually reads,
+    # so it must succeed regardless of what happens with the registry below.
     os.makedirs("trainingpipeline/saved_model", exist_ok=True)
     model_path = f"trainingpipeline/saved_model/{best_name}_model.pkl"
     joblib.dump(best_model, model_path)
+    print(f"✅ Model saved locally to {model_path}")
 
-    # Push to Hopsworks Model Registry
-    mr = project.get_model_registry()
-    input_schema = Schema(X_train)
-    output_schema = Schema(y_train)
-    model_schema = ModelSchema(input_schema=input_schema, output_schema=output_schema)
-    model = mr.python.create_model(
-        name="aqi_predictor_v2",
-        metrics={"rmse": best_rmse, "mae": best_mae, "r2": best_r2},
-        description=f"AQI predictor using {best_name}",
-        model_schema=model_schema,
-    )
-    model.save(model_path)
-
-    print("✅ Model saved to Hopsworks Model Registry.")
+    # Push to Hopsworks Model Registry — wrapped so a registry-side failure
+    # (e.g. the recurring HTTP 500 on repeated version creation) doesn't
+    # fail the whole pipeline. The model is already safely saved locally above.
+    try:
+        mr = project.get_model_registry()
+        input_schema = Schema(X_train)
+        output_schema = Schema(y_train)
+        model_schema = ModelSchema(input_schema=input_schema, output_schema=output_schema)
+        model = mr.python.create_model(
+            name="aqi_predictor_v2",
+            metrics={"rmse": best_rmse, "mae": best_mae, "r2": best_r2},
+            description=f"AQI predictor using {best_name}",
+            model_schema=model_schema,
+        )
+        model.save(model_path)
+        print("✅ Model registered to Hopsworks Model Registry.")
+    except Exception as e:
+        print(f"⚠️ Model registry upload failed (continuing anyway — local model is saved): {e}")
 
 
 if __name__ == "__main__":
